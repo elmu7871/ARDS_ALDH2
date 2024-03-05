@@ -1,0 +1,109 @@
+---
+title: "huPCLS_qPCR_plotting"
+author: "Libby Murphy"
+date: "`r Sys.Date()`"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+We're suspicious about the qPCR variability in four PCLS experiments. I'd like to plot the normalization data to see if I can identify any technical explanations for the variability.
+
+```{r setup, results = FALSE, echo = FALSE, message = FALSE, warning = FALSE}
+library(here)
+library(tidyverse)
+library(conflicted)
+library(ggthemes)
+```
+
+```{r import and format data, results = FALSE, message = FALSE, warning = FALSE}
+myfiles <- list.files(path = here("huPCLS_qPCR_plots", "data"), full.names = T, recursive = F)
+data_list <- list()
+for (i in 1:length(myfiles)) {
+  data_list[[i]] <- read_csv(file = myfiles[i])
+  colnames(data_list[[i]]) <-  c("target", "sample", "Cq", NA, NA, "dCq", "ddCq", "lfc") 
+  data_list[[i]] <- data_list[[i]] %>% dplyr::select(c("target", "sample", "Cq", "dCq", "ddCq", "lfc"))
+  data_list[[i]] <- data_list[[i]] %>% separate(col = sample, into = c("cocktail", "tx"), sep = "_")
+  data_list[[i]]$Cq <- as.numeric(data_list[[i]]$Cq)
+  data_list[[i]]$dCq <- as.numeric(data_list[[i]]$dCq)
+  data_list[[i]]$ddCq <- as.numeric(data_list[[i]]$ddCq)
+  data_list[[i]]$lfc <- as.numeric(data_list[[i]]$lfc)
+}
+```
+
+```{r plot Cq, results = FALSE, message = FALSE, warning = FALSE}
+ggtitles <- c("PCLS10", "PCLS13", "PCLS15", "PCLS16")
+Cq_plots_list <- list()
+for (i in 1:length(data_list)) {
+  Cq_plots_list[[i]] <- data_list[[i]] %>%
+  ggplot(aes(x = target, y = Cq, color = cocktail, shape = tx)) +
+  geom_point() +
+  ylim(0,40) +
+  geom_jitter(width = .4, size = 2) + 
+  theme_few() + 
+  theme(axis.text.x = element_text(angle = 60, hjust=1)) +
+  ggtitle(ggtitles[i])
+}
+
+Cq_plots <- cowplot::plot_grid(plotlist = Cq_plots_list, nrow = 1)
+Cq_plots_list
+
+ggsave(filename = "Cq_plots.png", path = here("huPCLS_qPCR_plots", "results"), plot = Cq_plots, device = "png", height = 5, width = 20)
+```
+
+```{r plot dCq, results = FALSE, message = FALSE, warning = FALSE}
+dCq_plots_list <- list()
+for (i in 1:length(data_list)) {
+  dCq_plots_list[[i]] <- data_list[[i]] %>%
+  ggplot(aes(x = target, y = dCq, color = cocktail, shape = tx)) +
+  geom_point() +
+#  ylim(0,40) +
+  geom_jitter(width = .4, size = 2) + 
+  theme_few() + 
+  theme(axis.text.x = element_text(angle = 60, hjust=1)) +
+  ggtitle(ggtitles[i])
+}
+
+dCq_plots <- cowplot::plot_grid(plotlist = dCq_plots_list, nrow = 1)
+dCq_plots_list
+
+ggsave(filename = "dCq_plots.png", path = here("huPCLS_qPCR_plots", "results"), plot = dCq_plots, device = "png", height = 5, width = 20)
+```
+
+```{r plot ddCq, results = FALSE, message = FALSE, warning = FALSE}
+ddCq_plots_list <- list()
+for (i in 1:length(data_list)) {
+  ddCq_plots_list[[i]] <- data_list[[i]] %>%
+  ggplot(aes(x = target, y = lfc, color = cocktail, shape = tx)) +
+  geom_point() +
+  ylim(0,2.5) +
+  geom_jitter(width = .4, size = 2) + 
+  theme_few() + 
+  theme(axis.text.x = element_text(angle = 60, hjust=1)) +
+  ggtitle(ggtitles[i])
+}
+
+ddCq_plots <- cowplot::plot_grid(plotlist = ddCq_plots_list, nrow = 1)
+ddCq_plots_list
+
+ggsave(filename = "ddCq_plots.png", path = here("huPCLS_qPCR_plots", "results"), plot = ddCq_plots, device = "png", height = 5, width = 20)
+```
+
+```{r extra plots, results = FALSE, message = FALSE, warning = FALSE}
+# I'd like to do something here
+ggtitles <- c("PCLS10", "PCLS13", "PCLS15", "PCLS16")
+yaxes <- colnames(data_list[[1]])[c(4,5,7)]
+
+ for (x in 1:length(yaxes)) { # x iterates for each of Cq, dCq, ddCq
+   for (i in 1:length(data_list)) { # i iterates for each sample in data_list
+     plot_list_nested[[x]] <- cowplot::plot_grid(
+       data_list[[i]] %>%
+       ggplot(aes(x = target, y = yaxes[x], color = cocktail, shape = tx)) +
+       geom_point() +
+       geom_jitter(width = .4, size = 2) + 
+       theme_few() + 
+       theme(axis.text.x = element_text(angle = 60, hjust=1))
+     )
+ }
+}
+```
